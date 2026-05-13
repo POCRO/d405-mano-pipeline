@@ -21,6 +21,80 @@ D405 capture ──► stereo IR + depth + color ──► FoundationStereo (com
 
 ---
 
+## Example results
+
+Three artifacts from running the full pipeline on a hand-on-keyboard scene
+captured at ~25 cm. All three images live under [image/example_results/](image/example_results/).
+
+### 1. FoundationStereo vs D405 native depth — they agree to ~1.5 mm on the median
+
+`compare_fs_d405.py` runs FoundationStereo on the IR pair and stacks its
+depth next to D405's measurement-only depth. Top-left: input color. Top-right:
+D405's native filtered depth. Bottom-left: FoundationStereo. Bottom-right:
+signed difference (red = FS reports farther, blue = closer, white = match).
+
+![FoundationStereo vs D405 depth](image/example_results/01_fs_vs_d405_depth.png)
+
+```
+Coverage:
+  D405 actually measured :  92.72 %      (emitter OFF, textured scene)
+  D405 with hole-filling :  95.51 %
+  FoundationStereo       :  95.93 %
+  comparison overlap     :  92.72 %
+
+Errors on overlap (FS - D405):
+  bias       :   +1.18 mm
+  mean |err| :    4.20 mm
+  median|err|:    1.50 mm
+  RMSE       :    9.36 mm
+```
+
+The 1.5 mm median tells the real story: on the half of pixels where both
+methods agree most, they're within sensor noise. The 9 mm RMSE is the
+tail from a few edge pixels.
+
+### 2. HaMeR's MANO mesh, projected onto the color image
+
+`infer_hamer.py` runs HaMeR on `color.png` and produces a rendered overlay
+along with `mano_hand_<i>.npz` (β, θ, 778 vertices, 21 joints).
+
+![HaMeR MANO overlay](image/example_results/02_hamer_mano_overlay.jpg)
+
+The "white glove" you see is the 778-vertex MANO mesh re-rendered through
+HaMeR's *virtual* camera (focal ≈ 16562 px). The fit is visually good in
+2D — but HaMeR places the hand at Z ≈ 8.7 m in 3D, ~30× too far. The next
+two steps fix that.
+
+### 3. Stage 4 rigid shift vs depth-fitted MANO — 2× tighter to the surface
+
+`fit_mano.py` optimizes (β, θ, global_orient, T) so MANO's 21 joints match
+D405's depth at all 21 projected pixels. Top-left: HaMeR + rigid wrist shift
+(red). Top-right: depth-fitted MANO (green). Bottom-left: D405 surface
+back-projected at the 21 HaMeR pixels (cyan, *no kinematic constraints*).
+Bottom-right: all three overlaid.
+
+![Joints — Stage 4 rigid shift vs depth-fitted](image/example_results/03_joints_stage4_vs_fit.png)
+
+| Comparison | mean 3D distance | max |
+|---|---|---|
+| Stage 4 (rigid) vs depth-fitted | 11.66 mm | 14.24 mm |
+| Stage 4 (rigid) vs D405 surface | 15.72 mm | 53 mm |
+| **depth-fitted vs D405 surface** | **8.00 mm** | 41 mm |
+
+Depth fitting halves the gap to D405's surface (16 mm → 8 mm). The residual
+8 mm is dominated by the fundamental "joint center inside the finger vs.
+skin surface outside" offset that ~no method can eliminate.
+
+> **Why is the cyan ("D405 measured") skeleton visually closest to the
+> hand?** Because it has *no kinematic constraints* — each of the 21 cyan
+> points is the D405 surface depth at exactly that 2D pixel. They look
+> pasted-on but the "bones" between them are not real bone lengths and
+> can't be used to fit a personalized skeleton. The green MANO joints sit
+> inside the finger (where bones actually are) and preserve consistent
+> bone lengths — that's what Stage 5 needs.
+
+---
+
 ## Two Python environments are needed
 
 | Env                                             | What's in it                                                               | Used by                                                           |
