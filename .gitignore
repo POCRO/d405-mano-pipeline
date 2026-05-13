@@ -1,0 +1,36 @@
+# --- Captured data (user-generated, large, machine-specific) ---
+captures/
+sequences/
+
+# --- Model weights / SDK data accidentally dropped in this dir ---
+# (HaMeR's first-run download landed here when infer_hamer.py was buggy)
+_DATA/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# --- Virtual envs (none should live here, but just in case) ---
+.venv/
+venv/
+env/
+
+# --- Optional outputs you might keep elsewhere ---
+*.ply
+*.npy
+*.npz
+*.pth
+*.tar.gz
